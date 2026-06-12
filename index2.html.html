@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Scrum · itgrupoceta</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --control: #0078D4;
+    --control-light: #D0E8F8;
+    --payroll: #6B3FA0;
+    --payroll-light: #E8DCFA;
+    --moonflow: #C4314B;
+    --moonflow-light: #FAD9DF;
+    --bg: #F3F4F6;
+    --surface: #FFFFFF;
+    --border: #E5E7EB;
+    --text: #111827;
+    --text-muted: #6B7280;
+    --text-light: #9CA3AF;
+    --success: #059669;
+    --warning: #D97706;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 32px; height: 32px; background: var(--control); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .header-logo svg { width: 18px; height: 18px; fill: white; }
+  .header-title { font-size: 16px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .btn { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--control); color: white; }
+  .btn-primary:hover { background: #005a9e; }
+  .btn-outline { background: white; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--bg); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 5px; }
+  .status-text { font-size: 12px; color: var(--text-muted); }
+
+  /* TOKEN MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+  .modal { background: white; border-radius: 12px; padding: 28px 32px; width: 480px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .modal input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: monospace; margin-bottom: 8px; }
+  .modal input:focus { outline: none; border-color: var(--control); box-shadow: 0 0 0 3px rgba(0,120,212,0.15); }
+  .modal-hint { font-size: 11px; color: var(--text-light); margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-org { display: flex; gap: 8px; margin-bottom: 12px; }
+  .modal-org input { margin-bottom: 0; }
+
+  /* LAYOUT */
+  .main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 12px; margin-top: 24px; }
+  .section-title:first-child { margin-top: 0; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 4px; }
+  .kpi-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px 20px; box-shadow: var(--shadow); }
+  .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .kpi-sub { font-size: 11px; color: var(--text-light); }
+  .kpi-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .badge-orange { background: #FEF3C7; color: #92400E; }
+  .badge-blue { background: var(--control-light); color: #1D4ED8; }
+
+  /* PROJECT CARDS */
+  .projects-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .project-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow); }
+  .project-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .project-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .project-name { font-size: 14px; font-weight: 600; }
+  .project-sprint { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+  .progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .progress-label span:first-child { font-size: 12px; color: var(--text-muted); }
+  .progress-label span:last-child { font-size: 13px; font-weight: 700; }
+  .progress-bar { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
+  .progress-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+  .project-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .project-stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+  .project-stat-value { font-size: 15px; font-weight: 600; }
+
+  /* CHARTS ROW */
+  .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+  .chart-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow); }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .chart-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; }
+
+  /* DEV TABLE */
+  .dev-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+  .dev-table { width: 100%; border-collapse: collapse; }
+  .dev-table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); background: #FAFAFA; }
+  .dev-table td { padding: 13px 16px; border-bottom: 1px solid var(--bg); font-size: 13px; vertical-align: middle; }
+  .dev-table tr:last-child td { border-bottom: none; }
+  .dev-table tr:hover td { background: #FAFBFC; }
+  .dev-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+  .dev-name-cell { display: flex; align-items: center; gap: 10px; }
+  .dev-name { font-weight: 500; }
+  .dev-role { font-size: 11px; color: var(--text-muted); }
+  .mini-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .mini-bar { height: 6px; background: var(--bg); border-radius: 3px; flex: 1; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; }
+  .mini-val { font-size: 12px; font-weight: 600; min-width: 28px; text-align: right; }
+  .new-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #EDE9FE; color: #5B21B6; margin-left: 6px; }
+  .cycle-chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .chip-green { background: #D1FAE5; color: #065F46; }
+  .chip-orange { background: #FEF3C7; color: #92400E; }
+  .chip-red { background: #FEE2E2; color: #991B1B; }
+
+  /* PROJECT LEGEND */
+  .legend { display: flex; gap: 16px; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* LOADING */
+  .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-muted); gap: 12px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--control); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ERROR */
+  .error-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: #991B1B; margin: 10px 0; }
+
+  /* LAST UPDATE */
+  .last-update { font-size: 11px; color: var(--text-light); }
+
+  /* NEW DEV NOTICE */
+  .new-dev-notice { background: #EDE9FE; border: 1px solid #C4B5FD; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #5B21B6; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+  @media (max-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .projects-grid { grid-template-columns: 1fr; }
+    .charts-row { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- MODAL TOKEN -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Conectar con Azure DevOps</h2>
+    <p>Ingresá tu Personal Access Token para cargar los datos reales del equipo. El token se usa solo en tu navegador y no se envía a ningún servidor externo.</p>
+    <label style="font-size:12px;font-weight:500;display:block;margin-bottom:5px">Organización</label>
+    <div class="modal-org">
+      <span style="font-size:13px;color:#6B7280;padding:10px 0;white-space:nowrap">dev.azure.com /</span>
+      <input type="text" id="input-org" value="itgrupoceta" placeholder="itgrupoceta">
+    </div>
+    <label style="font-size:12px;font-weight:500;display:block;margin-bottom:5px">Personal Access Token (PAT)</label>
+    <input type="password" id="input-pat" placeholder="Pegá tu token aquí...">
+    <div class="modal-hint">El token necesita permisos de lectura en Work Items. Nunca sale de tu navegador.</div>
+    <div id="modal-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="usarDemoData()">Ver con datos demo</button>
+      <button class="btn btn-primary" onclick="conectar()">Conectar y cargar datos</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">
+      <svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2zm0 2.5L16 8l-6 3.5L4 8l6-3.5zM3.5 9.2l5.5 3.2v5.1L3.5 14.3V9.2zm7.5 8.3v-5.1l5.5-3.2v5.1L11 17.5z"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Dashboard Scrum · itgrupoceta</div>
+      <div class="header-sub">CETA_CONTROL · CETA_PAYROLL · CETA_MOONFLOW</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="status-text"><span class="status-dot" id="status-dot" style="background:#D1D5DB"></span><span id="status-text">Sin conectar</span></span>
+    <span class="last-update" id="last-update"></span>
+    <button class="btn btn-outline" onclick="refreshData()" id="btn-refresh" style="display:none">↻ Actualizar</button>
+    <button class="btn btn-outline" onclick="showModal()">⚙ Token</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main-content">
+  <div class="loading">
+    <div class="spinner"></div>
+    <span>Esperando conexión con Azure DevOps...</span>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  org: 'itgrupoceta',
+  projects: [
+    { id: 'CETA_CONTROL',  name: 'CETA_CONTROL',  color: '#0078D4', light: '#D0E8F8', sprint: 'Sprint 12',  sprintNum: 12  },
+    { id: 'CETA_PAYROLL',  name: 'CETA_PAYROLL',  color: '#6B3FA0', light: '#E8DCFA', sprint: 'Sprint 44',  sprintNum: 44  },
+    { id: 'CETA_MOONFLOW', name: 'CETA_MOONFLOW', color: '#C4314B', light: '#FAD9DF', sprint: 'Sprint 48',  sprintNum: 48  },
+  ],
+  devs: [
+    { name: 'Cynthia Schloymann',    initials: 'CS', color: '#0078D4' },
+    { name: 'Luca Baello',           initials: 'LB', color: '#059669' },
+    { name: 'Lucas Riccombene',      initials: 'LR', color: '#C4314B' },
+    { name: 'Micaela Sanchez',       initials: 'MS', color: '#6B3FA0' },
+    { name: 'Sebastian Finocchietti',initials: 'SF', color: '#D97706' },
+  ],
+  newDev: { name: 'Omar Aguirre', initials: 'OA', color: '#6B7280', project: 'CETA_MOONFLOW' },
+  sprintHistory: 4,
+};
+
+let pat = '';
+let charts = {};
+
+function headers() {
+  return {
+    'Authorization': 'Basic ' + btoa(':' + pat),
+    'Content-Type': 'application/json',
+  };
+}
+
+function showModal() {
+  document.getElementById('modal').style.display = 'flex';
+}
+
+async function conectar() {
+  const orgVal = document.getElementById('input-org').value.trim();
+  const patVal = document.getElementById('input-pat').value.trim();
+  if (!patVal) { showError('Ingresá el token PAT.'); return; }
+  CONFIG.org = orgVal || CONFIG.org;
+  pat = patVal;
+  document.getElementById('modal-error').innerHTML = '';
+  document.getElementById('modal').style.display = 'none';
+  await loadAllData();
+}
+
+function showError(msg) {
+  document.getElementById('modal-error').innerHTML = `<div class="error-box">${msg}</div>`;
+}
+
+async function fetchWIQL(project, wiql) {
+  const url = `https://dev.azure.com/${CONFIG.org}/${project}/_apis/wit/wiql?api-version=7.0`;
+  const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify({ query: wiql }) });
+  if (!res.ok) throw new Error(`Error ${res.status} en ${project}`);
+  return res.json();
+}
+
+async function fetchWorkItems(ids) {
+  if (!ids.length) return [];
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 200) chunks.push(ids.slice(i, i+200));
+  const results = [];
+  for (const chunk of chunks) {
+    const url = `https://dev.azure.com/${CONFIG.org}/_apis/wit/workitems?ids=${chunk.join(',')}&fields=System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.Effort,Microsoft.VSTS.Scheduling.StoryPoints,System.IterationPath,System.ChangedDate,System.CreatedDate,Microsoft.VSTS.Common.ActivatedDate,Microsoft.VSTS.Common.ClosedDate,System.WorkItemType,System.Title&api-version=7.0`;
+    const res = await fetch(url, { headers: headers() });
+    if (!res.ok) continue;
+    const data = await res.json();
+    results.push(...(data.value || []));
+  }
+  return results;
+}
+
+async function getProjectData(proj) {
+  const sprintNums = [];
+  for (let i = CONFIG.sprintHistory - 1; i >= 0; i--) {
+    sprintNums.push(proj.sprintNum - i);
+  }
+  const sprintNames = sprintNums.map(n => `Sprint ${n}`);
+
+  const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${proj.id}' AND [System.WorkItemType] IN ('User Story','Task','Bug','Product Backlog Item') AND [System.IterationPath] UNDER '${proj.id}'`;
+  const wiqlResult = await fetchWIQL(proj.id, wiql);
+  const ids = (wiqlResult.workItems || []).map(w => w.id);
+  const items = await fetchWorkItems(ids);
+
+  const sprintData = {};
+  for (const sn of sprintNames) {
+    sprintData[sn] = { total: 0, done: 0, items: [] };
+  }
+  let totalAll = 0, doneAll = 0;
+
+  for (const item of items) {
+    const f = item.fields;
+    const iterPath = (f['System.IterationPath'] || '').split('\\').pop();
+    const state = f['System.State'] || '';
+    const sp = parseFloat(f['Microsoft.VSTS.Scheduling.Effort']) || parseFloat(f['Microsoft.VSTS.Scheduling.StoryPoints']) || 0;
+    totalAll += sp;
+    const isDone = ['Done','Closed','Resolved','Fixed','Completed'].includes(state);
+    if (isDone) doneAll += sp;
+    if (sprintData[iterPath] !== undefined) {
+      sprintData[iterPath].total += sp;
+      if (isDone) sprintData[iterPath].done += sp;
+      sprintData[iterPath].items.push(item);
+    }
+  }
+
+  const velocities = sprintNames.slice(0, -1).map(sn => sprintData[sn]?.done || 0);
+  const avgVelocity = velocities.length ? Math.round(velocities.reduce((a,b)=>a+b,0)/velocities.length) : 0;
+  const currentSprint = sprintData[proj.sprint] || { total: 0, done: 0, items: [] };
+
+  return { proj, items, sprintData, sprintNames, velocities, avgVelocity, totalAll, doneAll, currentSprint };
+}
+
+async function getDevMetrics(allItems) {
+  const devMap = {};
+  for (const dev of CONFIG.devs) {
+    devMap[dev.name.toLowerCase()] = { ...dev, sp: 0, tasks: 0, cycleSum: 0, cycleCount: 0 };
+  }
+  const omarKey = CONFIG.newDev.name.toLowerCase();
+  devMap[omarKey] = { ...CONFIG.newDev, sp: 0, tasks: 0, cycleSum: 0, cycleCount: 0, isNew: true };
+
+  for (const item of allItems) {
+    const f = item.fields;
+    const assigned = (f['System.AssignedTo']?.displayName || f['System.AssignedTo'] || '').toLowerCase();
+    const state = f['System.State'] || '';
+    const sp = parseFloat(f['Microsoft.VSTS.Scheduling.Effort']) || parseFloat(f['Microsoft.VSTS.Scheduling.StoryPoints']) || 0;
+    const activated = f['Microsoft.VSTS.Common.ActivatedDate'] ? new Date(f['Microsoft.VSTS.Common.ActivatedDate']) : new Date(f['System.CreatedDate']);
+    const closed = f['Microsoft.VSTS.Common.ClosedDate'] ? new Date(f['Microsoft.VSTS.Common.ClosedDate']) : new Date(f['System.ChangedDate']);
+    const cycleDays = Math.max(1, Math.round((closed - activated) / (1000*60*60*24)));
+
+    const isDone = ['Done','Closed','Resolved','Fixed','Completed'].includes(state);
+    for (const key of Object.keys(devMap)) {
+      if (assigned.includes(key.split(' ')[0]) || assigned.includes(key.split(' ')[1] || '')) {
+        if (isDone) {
+          devMap[key].sp += sp;
+          devMap[key].tasks += 1;
+          devMap[key].cycleSum += cycleDays;
+          devMap[key].cycleCount += 1;
+        }
+        break;
+      }
+    }
+  }
+  return devMap;
+}
+
+async function loadAllData() {
+  setStatus('loading');
+  renderLoading();
+  try {
+    const results = await Promise.all(CONFIG.projects.map(p => getProjectData(p)));
+    const allItems = results.flatMap(r => r.items);
+    const devMetrics = await getDevMetrics(allItems);
+    renderDashboard(results, devMetrics);
+    setStatus('connected');
+    document.getElementById('btn-refresh').style.display = 'inline-block';
+    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+    window._lastResults = results;
+    window._lastDevMetrics = devMetrics;
+  } catch(e) {
+    renderError(e.message);
+    setStatus('error');
+    document.getElementById('modal').style.display = 'flex';
+    showError('No se pudo conectar: ' + e.message + '. Verificá el token y la organización.');
+  }
+}
+
+function refreshData() { loadAllData(); }
+
+function setStatus(s) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if (s === 'connected') { dot.style.background = '#059669'; txt.textContent = 'Conectado'; }
+  else if (s === 'loading') { dot.style.background = '#D97706'; txt.textContent = 'Cargando...'; }
+  else if (s === 'error') { dot.style.background = '#C4314B'; txt.textContent = 'Error de conexión'; }
+  else { dot.style.background = '#D1D5DB'; txt.textContent = 'Sin conectar'; }
+}
+
+function renderLoading() {
+  document.getElementById('main-content').innerHTML = `<div class="loading"><div class="spinner"></div><span>Cargando datos de Azure DevOps...</span></div>`;
+}
+
+function renderError(msg) {
+  document.getElementById('main-content').innerHTML = `<div class="error-box" style="max-width:500px;margin:40px auto">No se pudo conectar con Azure DevOps.<br><small>${msg}</small></div>`;
+}
+
+function sprintsLeft(rem, vel) {
+  if (!vel || vel === 0) return '–';
+  return Math.ceil(rem / vel);
+}
+
+function renderDashboard(results, devMetrics) {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+
+  const totalDone = results.reduce((a,r) => a + r.doneAll, 0);
+  const totalAll  = results.reduce((a,r) => a + r.totalAll, 0);
+  const globalPct = totalAll > 0 ? Math.round(totalDone / totalAll * 100) : 0;
+  const avgVel    = Math.round(results.reduce((a,r) => a + r.avgVelocity, 0) / results.length);
+  const totalRem  = totalAll - totalDone;
+  const spLeft    = sprintsLeft(totalRem, avgVel);
+
+  const devList = CONFIG.devs.map(d => {
+    const key = Object.keys(devMetrics).find(k => k.includes(d.name.split(' ')[0].toLowerCase()));
+    return key ? { ...d, ...devMetrics[key] } : { ...d, sp: 0, tasks: 0, cycleSum: 0, cycleCount: 0 };
+  });
+  const omarKey = Object.keys(devMetrics).find(k => k.includes('omar'));
+  const omarData = omarKey ? { ...CONFIG.newDev, ...devMetrics[omarKey] } : { ...CONFIG.newDev, sp: 0, tasks: 0, cycleSum: 0, cycleCount: 0 };
+  const maxSP = Math.max(...devList.map(d => d.sp), 1);
+
+  document.getElementById('main-content').innerHTML = `
+
+  <!-- KPIs -->
+  <div class="section-title">Resumen general · Sprint activo</div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Completado global</div>
+      <div class="kpi-value" style="color:var(--control)">${globalPct}%</div>
+      <div class="kpi-sub">${totalDone} de ${totalAll} SP totales</div>
+      <span class="kpi-badge ${globalPct >= 60 ? 'badge-green' : 'badge-orange'}">${globalPct >= 60 ? 'En camino' : 'En progreso'}</span>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Velocidad promedio</div>
+      <div class="kpi-value" style="color:var(--payroll)">${avgVel} SP</div>
+      <div class="kpi-sub">últimos ${CONFIG.sprintHistory - 1} sprints</div>
+      <span class="kpi-badge badge-blue">por sprint</span>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Story Points restantes</div>
+      <div class="kpi-value" style="color:var(--moonflow)">${totalRem}</div>
+      <div class="kpi-sub">para cerrar los 3 proyectos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Sprints estimados</div>
+      <div class="kpi-value">${spLeft}</div>
+      <div class="kpi-sub">para terminar todo</div>
+      <span class="kpi-badge badge-orange">estimación</span>
+    </div>
+  </div>
+
+  <!-- PROYECTOS -->
+  <div class="section-title">Progreso por proyecto</div>
+  <div class="projects-grid">
+    ${results.map(r => {
+      const pct = r.totalAll > 0 ? Math.round(r.doneAll / r.totalAll * 100) : 0;
+      const rem = r.totalAll - r.doneAll;
+      const sl = sprintsLeft(rem, r.avgVelocity);
+      return `
+      <div class="project-card">
+        <div class="project-header">
+          <div class="project-dot" style="background:${r.proj.color}"></div>
+          <div class="project-name">${r.proj.name}</div>
+          <div class="project-sprint">${r.proj.sprint}</div>
+        </div>
+        <div class="progress-label">
+          <span>Completado</span>
+          <span style="color:${r.proj.color}">${pct}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${pct}%;background:${r.proj.color}"></div>
+        </div>
+        <div class="project-stats">
+          <div><div class="project-stat-label">SP completados</div><div class="project-stat-value" style="color:${r.proj.color}">${r.doneAll}</div></div>
+          <div><div class="project-stat-label">SP restantes</div><div class="project-stat-value">${rem}</div></div>
+          <div><div class="project-stat-label">Velocidad prom.</div><div class="project-stat-value">${r.avgVelocity} SP</div></div>
+          <div><div class="project-stat-label">Sprints restantes</div><div class="project-stat-value">${sl}</div></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="section-title">Análisis de velocidad</div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Velocidad por sprint · últimos ${CONFIG.sprintHistory - 1} sprints</div>
+      <div class="chart-sub">Story Points completados por sprint en cada proyecto</div>
+      <div class="legend">
+        ${CONFIG.projects.map(p => `<div class="legend-item"><div class="legend-dot" style="background:${p.color}"></div>${p.name}</div>`).join('')}
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chart-velocity" role="img" aria-label="Gráfico de barras de velocidad por sprint"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Distribución SP completados</div>
+      <div class="chart-sub">Porcentaje de trabajo por proyecto</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chart-donut" role="img" aria-label="Gráfico de dona con distribución de story points por proyecto"></canvas></div>
+    </div>
+  </div>
+
+  <!-- DEVS -->
+  <div class="section-title">Métricas individuales · equipo consolidado</div>
+  <div class="new-dev-notice">
+    Omar Aguirre se incorporó el lunes 09/06 a CETA_MOONFLOW. Sus métricas se muestran separadas y no afectan los promedios históricos del equipo.
+  </div>
+  <div class="dev-card">
+    <table class="dev-table">
+      <thead>
+        <tr>
+          <th>Desarrollador</th>
+          <th>SP completados</th>
+          <th>Tareas cerradas</th>
+          <th>Cycle time prom.</th>
+          <th>Rendimiento</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${devList.map(d => {
+          const cycle = d.cycleCount > 0 ? (d.cycleSum / d.cycleCount).toFixed(1) : '–';
+          const cycleNum = d.cycleCount > 0 ? d.cycleSum / d.cycleCount : 0;
+          const chipClass = cycleNum === 0 ? '' : cycleNum <= 2 ? 'chip-green' : cycleNum <= 4 ? 'chip-orange' : 'chip-red';
+          const chipLabel = cycleNum === 0 ? '–' : cycleNum <= 2 ? 'Rápido' : cycleNum <= 4 ? 'Normal' : 'Lento';
+          const barPct = maxSP > 0 ? Math.round(d.sp / maxSP * 100) : 0;
+          return `<tr>
+            <td><div class="dev-name-cell"><div class="dev-avatar" style="background:${d.color}">${d.initials}</div><div><div class="dev-name">${d.name}</div></div></div></td>
+            <td><div class="mini-bar-wrap"><div class="mini-bar"><div class="mini-bar-fill" style="width:${barPct}%;background:${d.color}"></div></div><span class="mini-val">${d.sp}</span></div></td>
+            <td><strong>${d.tasks}</strong></td>
+            <td>${cycle !== '–' ? cycle + ' días' : '–'}</td>
+            <td><span class="cycle-chip ${chipClass}">${chipLabel}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- OMAR -->
+  <div class="section-title" style="margin-top:20px">Nuevo integrante · Omar Aguirre</div>
+  <div class="dev-card">
+    <table class="dev-table">
+      <thead>
+        <tr>
+          <th>Desarrollador</th>
+          <th>SP completados</th>
+          <th>Tareas cerradas</th>
+          <th>Cycle time prom.</th>
+          <th>Proyecto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="dev-name-cell"><div class="dev-avatar" style="background:#6B7280">${omarData.initials}</div><div><div class="dev-name">${omarData.name} <span class="new-badge">Nuevo</span></div><div class="dev-role">Desde 09/06/2026</div></div></div></td>
+          <td><strong>${omarData.sp}</strong></td>
+          <td><strong>${omarData.tasks}</strong></td>
+          <td>${omarData.cycleCount > 0 ? (omarData.cycleSum/omarData.cycleCount).toFixed(1) + ' días' : 'Sin datos aún'}</td>
+          <td><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--moonflow-light);color:var(--moonflow)">CETA_MOONFLOW</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  `;
+
+  // Gráfico velocidad
+  const sprintLabels = results[0].sprintNames.slice(0, -1).map((_, i) => `Sprint -${CONFIG.sprintHistory - 1 - i}`);
+  charts.velocity = new Chart(document.getElementById('chart-velocity'), {
+    type: 'bar',
+    data: {
+      labels: sprintLabels,
+      datasets: results.map(r => ({
+        label: r.proj.name,
+        data: r.velocities,
+        backgroundColor: r.proj.color + 'CC',
+        borderColor: r.proj.color,
+        borderWidth: 1,
+        borderRadius: 4,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Gráfico dona
+  charts.donut = new Chart(document.getElementById('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: results.map(r => r.proj.name),
+      datasets: [{
+        data: results.map(r => r.doneAll),
+        backgroundColor: results.map(r => r.proj.color),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} SP` } }
+      },
+      cutout: '65%',
+    }
+  });
+}
+
+// DEMO DATA
+function usarDemoData() {
+  document.getElementById('modal').style.display = 'none';
+  setStatus('connected');
+  document.getElementById('btn-refresh').style.display = 'inline-block';
+  document.getElementById('last-update').textContent = 'Datos demo · ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+
+  const demoResults = CONFIG.projects.map((proj, pi) => {
+    const bases = [18,22,20,24];
+    const velocities = bases.map(b => b + pi * 3 + Math.floor(Math.random()*4));
+    const avgVelocity = Math.round(velocities.reduce((a,b)=>a+b,0)/velocities.length);
+    const totalAll = [180, 220, 160][pi];
+    const doneAll  = [112, 88, 143][pi];
+    const sprintNames = Array.from({length: CONFIG.sprintHistory}, (_, i) =>
+      `Sprint ${proj.sprintNum - (CONFIG.sprintHistory - 1 - i)}`
+    );
+    const currentSprint = { total: 24, done: 10, items: [] };
+    return { proj, velocities, avgVelocity, totalAll, doneAll, sprintNames, currentSprint, items: [] };
+  });
+
+  const demoDevs = {};
+  CONFIG.devs.forEach(d => {
+    demoDevs[d.name.toLowerCase()] = { ...d, sp: Math.floor(Math.random()*30)+10, tasks: Math.floor(Math.random()*15)+5, cycleSum: Math.random()*12+4, cycleCount: Math.floor(Math.random()*8)+3 };
+  });
+  demoDevs['omar aguirre'] = { ...CONFIG.newDev, sp: 3, tasks: 1, cycleSum: 2, cycleCount: 1, isNew: true };
+
+  renderDashboard(demoResults, demoDevs);
+}
+</script>
+</body>
+</html>
